@@ -1,8 +1,33 @@
 apply plugin: 'com.android.library'
-
 apply plugin: 'kotlin-android'
-
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'org.jetbrains.dokka'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
+
+ext {
+    bintrayRepo = 'quadible'
+    bintrayName = 'activity-job-executor'
+
+    publishedGroupId = 'com.quadible'
+    libraryName = 'activityjobexecutor'
+    artifact = 'activityjobexecutor'
+
+    libraryDescription = 'Library that help us to execute tasks which need current activity, even if activity is not accessible for the moment'
+
+    siteUrl = 'https://github.com/St4B/ActivityJobExecutor'
+    gitUrl = 'https://github.com/St4B/ActivityJobExecutor.git'
+
+    libraryVersion = '1.0'
+
+    developerId = 'St4B'
+    developerName = 'Vaios Tsitsonis'
+    developerEmail = 'v.tsitsonis@quadible.co.uk'
+
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
+}
 
 android {
     compileSdkVersion 28
@@ -11,7 +36,6 @@ android {
         minSdkVersion 16
         targetSdkVersion 28
         versionCode 1
-        versionName "1.0"
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
@@ -26,6 +50,14 @@ android {
 
 }
 
+dokka {
+    outputFormat = 'html'
+    outputDirectory = "$buildDir/javadoc"
+}
+
+apply from: rootProject.projectDir.toString() + '/buildsystem/install.gradle'
+apply from: rootProject.projectDir.toString() + '/buildsystem/bintray.gradle'
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
@@ -38,4 +70,30 @@ dependencies {
     implementation dependencies.coroutinesCore
     implementation dependencies.coroutinesAndroid
     implementation dependencies.currentActivity
+}
+
+publishing {
+    publications {
+        Production(MavenPublication) {
+            artifact("$buildDir/outputs/aar/" + artifact + "-release.aar")
+            groupId publishedGroupId
+            artifactId artifact
+            version libraryVersion
+
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+
+                // Iterate over the implementation dependencies (we don't want the test ones), adding a <dependency> node for each
+                configurations.implementation.allDependencies.each {
+                    // Ensure dependencies such as fileTree are not included in the pom.
+                    if (it.name != 'unspecified') {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+        }
+    }
 }
